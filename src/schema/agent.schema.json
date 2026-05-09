@@ -1,0 +1,224 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://coop.dev/schemas/agent.v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "model"],
+  "properties": {
+    "apiVersion": { "type": "string", "pattern": "^coop\\.dev/v\\d+$" },
+    "name": { "type": "string", "maxLength": 64, "pattern": "^[a-z0-9-]+$" },
+    "title": { "type": "string", "maxLength": 256 },
+    "description": { "type": "string", "maxLength": 2048 },
+    "tags": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "maxProperties": 16
+    },
+    "triggers": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/trigger" }
+    },
+    "model": {
+      "oneOf": [
+        { "type": "string" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id"],
+          "properties": {
+            "id": { "type": "string" },
+            "speed": { "enum": ["standard", "fast"] }
+          }
+        }
+      ]
+    },
+    "session": { "enum": ["isolated", "persistent"] },
+    "timeout": { "type": "string", "pattern": "^\\d+(s|m|h|d)$" },
+    "maxTurns": { "type": "integer", "minimum": 1, "maximum": 500 },
+    "maxBudgetUsd": { "type": "number", "minimum": 0 },
+    "tools": { "type": "array", "items": { "type": "string" } },
+    "skills": { "type": "array", "items": { "type": "string", "pattern": "^[a-z0-9-]+$" } },
+    "environment": { "$ref": "#/definitions/refOrInline" },
+    "vault": { "$ref": "#/definitions/refOrInline" },
+    "memory": { "$ref": "#/definitions/refOrInline" },
+    "resources": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/resource" }
+    },
+    "permissions": { "$ref": "#/definitions/permissions" },
+    "playbook": { "type": "string" },
+    "outcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["description"],
+      "properties": {
+        "description": { "type": "string" },
+        "max_iterations": { "type": "integer", "minimum": 1, "maximum": 20 }
+      }
+    },
+    "hooks": { "$ref": "#/definitions/hooks" },
+    "notify": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "on_start": { "type": "string" },
+        "on_success": { "type": "string" },
+        "on_failure": { "type": "string" },
+        "live_updates": { "type": "string" }
+      }
+    }
+  },
+  "definitions": {
+    "trigger": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "schedule"],
+          "properties": {
+            "type": { "const": "cron" },
+            "schedule": { "type": "string" },
+            "tz": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "every"],
+          "properties": {
+            "type": { "const": "heartbeat" },
+            "every": { "type": "string" },
+            "active_hours": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["start", "end"],
+              "properties": {
+                "start": { "type": "string" },
+                "end": { "type": "string" },
+                "tz": { "type": "string" }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "secret"],
+          "properties": {
+            "type": { "const": "webhook" },
+            "secret": { "type": "string" },
+            "path": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "to"],
+          "properties": {
+            "type": { "const": "on_email" },
+            "to": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "channel"],
+          "properties": {
+            "type": { "const": "on_slack_mention" },
+            "channel": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "repo"],
+          "properties": {
+            "type": { "const": "on_pr_comment" },
+            "repo": { "type": "string" },
+            "keyword": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type"],
+          "properties": {
+            "type": { "const": "manual" }
+          }
+        },
+        {
+          "$comment": "Provider-namespaced triggers - type MUST contain a '.' and may carry any additional fields the plugin needs.",
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": { "type": "string", "pattern": "\\." }
+          }
+        }
+      ]
+    },
+    "refOrInline": {
+      "oneOf": [
+        { "type": "string", "pattern": "^[a-z0-9-]+$" },
+        { "type": "object" }
+      ]
+    },
+    "resource": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "path"],
+          "properties": {
+            "type": { "const": "file" },
+            "path": { "type": "string" },
+            "mount": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "repo"],
+          "properties": {
+            "type": { "const": "github" },
+            "repo": { "type": "string" },
+            "branch": { "type": "string" },
+            "commit": { "type": "string" },
+            "mount": { "type": "string" },
+            "authorization_token": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "permissions": {
+      "type": "object",
+      "additionalProperties": { "enum": ["ask", "allow", "deny"] }
+    },
+    "hooks": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/definitions/hookValue" }
+    },
+    "hookValue": {
+      "oneOf": [
+        { "type": "string", "pattern": "^[./]" },
+        {
+          "type": "object",
+          "required": ["url"],
+          "additionalProperties": false,
+          "properties": {
+            "url": { "type": "string" },
+            "headers": { "type": "object", "additionalProperties": { "type": "string" } }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["replace", "handlers"],
+          "additionalProperties": false,
+          "properties": {
+            "replace": { "const": true },
+            "handlers": { "type": "array", "items": { "$ref": "#/definitions/hookValue" } }
+          }
+        }
+      ]
+    }
+  }
+}
