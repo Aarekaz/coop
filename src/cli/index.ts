@@ -13,6 +13,28 @@ export interface CliEnv {
 }
 
 export async function runCli(argv: string[], env: CliEnv): Promise<CliRunResult> {
+  if (argv.length === 0 || argv.includes("--help") || argv.includes("-h")) {
+    return {
+      exitCode: 0,
+      stdout: `Usage: coop validate <path> [--mode=strict|lenient]
+
+Commands:
+  validate <path>   Validate a .coop/agents/<name>.md file
+
+Flags:
+  --mode=strict     Strict mode (default): unknown keys are errors
+  --mode=lenient    Lenient mode: unknown keys are warnings
+  --help, -h        Show this message
+
+Exit codes:
+  0  validation ok
+  1  validation failed
+  2  usage error
+`,
+      stderr: "",
+    };
+  }
+
   const [cmd, ...rest] = argv;
   if (cmd !== "validate") {
     return usage("Unknown command");
