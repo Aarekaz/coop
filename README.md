@@ -2,7 +2,7 @@
 
 Reference implementation of the Coop `.coop/agents/<name>.md` file format.
 
-**Spec:** [docs/superpowers/specs/2026-05-13-coop-yaml-agent-format-design.md](docs/superpowers/specs/2026-05-13-coop-yaml-agent-format-design.md)
+**Spec:** [docs/specs/agent-file-format.md](docs/specs/agent-file-format.md)
 
 ## What this is
 
