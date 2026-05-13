@@ -23,7 +23,17 @@ export interface ReportResult {
 }
 
 export async function reportFile(file: string, opts: ReportOptions): Promise<ReportResult> {
-  const text = await readFile(file, "utf8");
+  let text: string;
+  try {
+    text = await readFile(file, "utf8");
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    return {
+      ok: false,
+      errors: [{ code: "file-read", message, path: file }],
+      warnings: [],
+    };
+  }
   return reportText(text, file, opts);
 }
 
