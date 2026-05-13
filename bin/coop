@@ -1,0 +1,10 @@
+#!/usr/bin/env bun
+import { runCli } from "../src/cli/index.ts";
+
+const result = await runCli(process.argv.slice(2), {
+  repoRoot: process.cwd(),
+  homeDir: process.env.HOME,
+});
+process.stdout.write(result.stdout);
+process.stderr.write(result.stderr);
+process.exit(result.exitCode);
