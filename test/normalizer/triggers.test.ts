@@ -54,4 +54,12 @@ describe("normalizeTriggers", () => {
   it("rejects both triggers: and singular trigger: present", () => {
     expect(() => normalizeTriggers({ cron: "0 9 * * *" }, { cron: "0 10 * * *" })).toThrow(/both/);
   });
+
+  it("rejects non-map triggers values", () => {
+    expect(() => normalizeTriggers(true as never, undefined)).toThrow(/map/);
+  });
+
+  it("rejects array triggers values", () => {
+    expect(() => normalizeTriggers([] as never, undefined)).toThrow(/map/);
+  });
 });
