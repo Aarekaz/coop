@@ -54,4 +54,10 @@ describe("runCli", () => {
     expect(r.exitCode).toBe(2);
     expect(r.stderr).toMatch(/usage/i);
   });
+
+  it("exit 1 with a structured error when the file is missing", async () => {
+    const r = await runCli(["validate", path.join(tmp, ".coop/agents/missing.md")], { repoRoot: tmp });
+    expect(r.exitCode).toBe(1);
+    expect(r.stderr).toMatch(/error: \[file-read\]/);
+  });
 });
