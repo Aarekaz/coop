@@ -33,6 +33,9 @@ export function normalizeTriggers(
   const warnings: NormalizerWarning[] = [];
   const source = triggersField ?? legacyTriggerField;
   if (source === undefined) return { triggers: undefined, warnings };
+  if (!isRawTriggersMap(source)) {
+    throw new Error("'triggers:' must be a map of trigger type to trigger configuration");
+  }
 
   if (legacyTriggerField !== undefined) {
     warnings.push({
@@ -51,6 +54,10 @@ export function normalizeTriggers(
   }
 
   return { triggers, warnings };
+}
+
+function isRawTriggersMap(value: unknown): value is RawTriggersMap {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function buildTrigger(type: string, raw: unknown): Trigger {
