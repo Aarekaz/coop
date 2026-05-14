@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://coop.dev/schemas/environment.v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": { "type": "string", "pattern": "^coop\\.dev/v\\d+$" },
+    "description": { "type": "string" },
+    "baseImage": { "type": "string" },
+    "packages": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "apt": { "type": "array", "items": { "type": "string" } },
+        "npm": { "type": "array", "items": { "type": "string" } },
+        "pip": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "env": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    }
+  }
+}

@@ -1,5 +1,8 @@
 import { reportFile } from "../validator/report";
+import { reportProject } from "../validator/project";
+import { initProject, newAgent } from "./scaffold";
 import path from "node:path";
+import { stat } from "node:fs/promises";
 
 export interface CliRunResult {
   exitCode: number;
@@ -16,10 +19,12 @@ export async function runCli(argv: string[], env: CliEnv): Promise<CliRunResult>
   if (argv.length === 0 || argv.includes("--help") || argv.includes("-h")) {
     return {
       exitCode: 0,
-      stdout: `Usage: coop validate <path> [--mode=strict|lenient]
+      stdout: `Usage: coop <command> [args]
 
 Commands:
-  validate <path>   Validate a .coop/agents/<name>.md file
+  validate <path>        Validate an agent file or Coop project directory
+  init                   Create the .coop directory structure
+  new agent <name>       Create a starter .coop/agents/<name>.md file
 
 Flags:
   --mode=strict     Strict mode (default): unknown keys are errors
@@ -36,6 +41,28 @@ Exit codes:
   }
 
   const [cmd, ...rest] = argv;
+  if (cmd === "init") {
+    try {
+      await initProject(env.repoRoot);
+      return { exitCode: 0, stdout: `ok: initialized Coop project at ${env.repoRoot}\n`, stderr: "" };
+    } catch (e) {
+      return errorResult("init-failed", e);
+    }
+  }
+
+  if (cmd === "new") {
+    const [kind, name] = rest;
+    if (kind !== "agent" || !name || rest.length !== 2) {
+      return usage("new requires: coop new agent <name>");
+    }
+    try {
+      const file = await newAgent(env.repoRoot, name);
+      return { exitCode: 0, stdout: `ok: created ${file}\n`, stderr: "" };
+    } catch (e) {
+      return errorResult("new-agent-failed", e);
+    }
+  }
+
   if (cmd !== "validate") {
     return usage("Unknown command");
   }
@@ -54,7 +81,18 @@ Exit codes:
   const file = path.resolve(env.repoRoot, positional[0]);
   const mode = (flags.mode === "lenient" ? "lenient" : "strict") as "strict" | "lenient";
 
-  const result = await reportFile(file, { mode, repoRoot: env.repoRoot, homeDir: env.homeDir });
+  let result;
+  let isProject = false;
+  try {
+    isProject = (await stat(file)).isDirectory();
+  } catch {
+    isProject = false;
+  }
+  if (isProject) {
+    result = await reportProject(file, { mode, homeDir: env.homeDir });
+  } else {
+    result = await reportFile(file, { mode, repoRoot: env.repoRoot, homeDir: env.homeDir });
+  }
 
   let stdout = "";
   let stderr = "";
@@ -67,16 +105,25 @@ Exit codes:
   }
 
   if (result.ok) {
-    stdout += `ok: ${file} (${result.warnings.length} warning${result.warnings.length === 1 ? "" : "s"})\n`;
+    if ("files" in result && Array.isArray(result.files)) {
+      stdout += `ok: ${file} (${result.files.length} files, ${result.warnings.length} warning${result.warnings.length === 1 ? "" : "s"})\n`;
+    } else {
+      stdout += `ok: ${file} (${result.warnings.length} warning${result.warnings.length === 1 ? "" : "s"})\n`;
+    }
     return { exitCode: 0, stdout, stderr };
   }
   return { exitCode: 1, stdout, stderr };
+}
+
+function errorResult(code: string, error: unknown): CliRunResult {
+  const message = error instanceof Error ? error.message : String(error);
+  return { exitCode: 1, stdout: "", stderr: `error: [${code}] ${message}\n` };
 }
 
 function usage(reason: string): CliRunResult {
   return {
     exitCode: 2,
     stdout: "",
-    stderr: `${reason}\nUsage: coop validate <path> [--mode=strict|lenient]\n`,
+    stderr: `${reason}\nUsage: coop <command> [args]\n`,
   };
 }

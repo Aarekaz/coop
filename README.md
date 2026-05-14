@@ -10,7 +10,8 @@ locking the source of truth to one hosted agent platform.
 
 ## What this is
 
-This repository is Slice 1 of Coop: the portable configuration layer.
+This repository is Slice 1 and the core of Slice 2 of Coop: the portable
+configuration and project-validation layer.
 
 It ships:
 
@@ -18,7 +19,8 @@ It ships:
 - A closed JSON Schema for canonical agent definitions
 - Normalizers for humane shortcuts and legacy aliases
 - Reference checks for environments, vaults, memory stores, and skills
-- A minimal `coop validate` CLI
+- Schemas for `.coop/environments`, `.coop/vaults`, and `.coop/memory-stores`
+- A minimal CLI for `coop validate`, `coop init`, and `coop new agent`
 
 It does not yet execute agents. The runtime, trigger workers, scheduler,
 hosted dashboard, and sandbox integration are later slices.
@@ -64,7 +66,10 @@ bun install
 
 ```bash
 bun run bin/coop validate path/to/agent.md
+bun run bin/coop validate path/to/project
 bun run bin/coop validate path/to/agent.md --mode=lenient
+bun run bin/coop init
+bun run bin/coop new agent daily-digest
 bun run bin/coop --help
 ```
 
@@ -74,11 +79,16 @@ Exit codes: `0` ok, `1` validation failed, `2` usage error.
 
 ```ts
 import { reportFile } from "./src/validator/report";
+import { reportProject } from "./src/validator/project";
+
 const result = await reportFile("./.coop/agents/foo.md", {
   mode: "strict",
   repoRoot: process.cwd(),
 });
 if (!result.ok) console.error(result.errors);
+
+const project = await reportProject(".", { mode: "strict" });
+if (!project.ok) console.error(project.errors);
 ```
 
 ## Test
@@ -95,11 +105,15 @@ read markdown → split frontmatter → parse yaml → normalize legacy aliases 
   normalize triggers → validate canonical (AJV) → resolve refs → collect diagnostics
 ```
 
-## Out of scope for Slice 1
+For project validation, Coop also walks `.coop/agents`, `.coop/environments`,
+`.coop/vaults`, and `.coop/memory-stores`, then reports one combined diagnostic
+result.
 
-`coop new agent`, agent runtime, web dashboard, `.coop/hooks/<name>/HOOK.md`,
-multi-agent coordinator, full Outcome rubric. See spec §18 for the full
-deferred list.
+## Out of scope
+
+Agent runtime, web dashboard, `.coop/hooks/<name>/HOOK.md`, multi-agent
+coordinator, full Outcome rubric, and Anthropic import/export mapping. See the
+roadmap for the deferred list.
 
 ## Roadmap
 

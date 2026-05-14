@@ -6,7 +6,7 @@ runtimes, and local development tools.
 
 ## Slice 1: Agent File Format
 
-Current repository state.
+Implemented.
 
 - `.coop/agents/<name>.md` parser
 - Canonical TypeScript types
@@ -17,13 +17,24 @@ Current repository state.
 
 ## Slice 2: Project Validation
 
+Implemented core.
+
 - Schemas for `.coop/environments/*.yaml`
 - Schemas for `.coop/vaults/*.yaml`
 - Schemas for `.coop/memory-stores/*.yaml`
 - `coop validate .`
 - `coop init`
 - `coop new agent`
+
+Deferred to Slice 2.5:
+
 - Anthropic import/export mapping
+
+## Slice 2.5: Portability Mappings
+
+- Anthropic import/export mapping
+- Round-trip tests for fields with direct Anthropic counterparts
+- Warnings for Coop-only fields that cannot export losslessly
 
 ## Slice 3: Local Runtime
 
