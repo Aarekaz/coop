@@ -1,0 +1,4 @@
+description: OAuth and API credentials for sales tools.
+bindings:
+  salesforce: oauth:salesforce
+  slack: oauth:slack

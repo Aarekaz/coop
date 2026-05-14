@@ -1,0 +1,4 @@
+baseImage: node:20
+packages:
+  apt: [ffmpeg]
+  npm: [tsx]

@@ -1,0 +1,3 @@
+scope: team
+retention: 180d
+description: Support resolutions, recurring issues, and escalation notes.

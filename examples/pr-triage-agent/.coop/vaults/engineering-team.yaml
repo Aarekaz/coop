@@ -1,0 +1,3 @@
+description: GitHub credentials for engineering automation.
+bindings:
+  github: app:github

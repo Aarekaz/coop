@@ -1,0 +1,4 @@
+description: Slack and Linear credentials for support automation.
+bindings:
+  slack: oauth:slack
+  linear: oauth:linear
