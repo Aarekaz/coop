@@ -1,25 +1,12 @@
-import Ajv, { type ErrorObject } from "ajv";
+import Ajv from "ajv";
 import schema from "../schema/agent.schema.json" with { type: "json" };
-import type { CanonicalAgent } from "../types/canonical";
+import type { ValidationIssue, ValidationMode, ValidationResultShape } from "../types/validation";
+import { addSchemaIssue } from "./issues";
 
-export type ValidationMode = "strict" | "lenient";
-
-export interface ValidationIssue {
-  code: string;
-  message: string;
-  path: string;
-}
-
-export interface ValidationResult {
-  ok: boolean;
-  errors: ValidationIssue[];
-  warnings: ValidationIssue[];
-}
+export interface ValidationResult extends ValidationResultShape {}
 
 const ajv = new Ajv({ strict: true, allErrors: true });
 const ajvValidate = ajv.compile(schema);
-
-const UNKNOWN_KEY_KEYWORDS = new Set(["additionalProperties"]);
 
 export function validate(input: unknown, opts: { mode: ValidationMode }): ValidationResult {
   const ok = ajvValidate(input);
@@ -28,12 +15,7 @@ export function validate(input: unknown, opts: { mode: ValidationMode }): Valida
 
   if (!ok) {
     for (const err of ajvValidate.errors ?? []) {
-      const issue = toIssue(err);
-      if (opts.mode === "lenient" && UNKNOWN_KEY_KEYWORDS.has(err.keyword)) {
-        warnings.push(issue);
-      } else {
-        errors.push(issue);
-      }
+      addSchemaIssue(err, opts.mode, { errors, warnings });
     }
   }
 
@@ -44,19 +26,4 @@ export function validate(input: unknown, opts: { mode: ValidationMode }): Valida
   };
 }
 
-function toIssue(err: ErrorObject): ValidationIssue {
-  if (err.keyword === "additionalProperties") {
-    return {
-      code: "unknown-key",
-      message: `Unknown key '${err.params.additionalProperty}' at ${err.instancePath || "/"}`,
-      path: err.instancePath || "/",
-    };
-  }
-  return {
-    code: `schema-${err.keyword}`,
-    message: err.message ?? "schema violation",
-    path: err.instancePath || "/",
-  };
-}
-
-export type { CanonicalAgent };
+export type { ValidationIssue, ValidationMode };

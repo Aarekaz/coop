@@ -45,6 +45,14 @@ describe("normalizeLegacyAliases", () => {
     expect(out.warnings).toContainEqual(expect.objectContaining({ code: "connections-manual-migration" }));
   });
 
+  it("preserves connections: with non-string entries for manual migration", () => {
+    const input = { connections: { salesforce: "shared", gmail: { vault: "shared" } } };
+    const out = normalizeLegacyAliases(input);
+    expect(out.data.connections).toEqual({ salesforce: "shared", gmail: { vault: "shared" } });
+    expect(out.data.vault).toBeUndefined();
+    expect(out.warnings).toContainEqual(expect.objectContaining({ code: "connections-manual-migration" }));
+  });
+
   it("does not overwrite an explicit vault: when merging connections:", () => {
     const input = { vault: "explicit", connections: { salesforce: "from-conn" } };
     const out = normalizeLegacyAliases(input);

@@ -1,18 +1,15 @@
 import { readFile } from "node:fs/promises";
-import Ajv, { type ErrorObject } from "ajv";
+import Ajv from "ajv";
 import { parseYaml } from "../parser/yaml";
 import environmentSchema from "../schema/environment.schema.json" with { type: "json" };
 import vaultSchema from "../schema/vault.schema.json" with { type: "json" };
 import memoryStoreSchema from "../schema/memory-store.schema.json" with { type: "json" };
-import type { ValidationIssue, ValidationMode } from "./index";
+import type { ValidationIssue, ValidationMode, ValidationResultShape } from "../types/validation";
+import { addSchemaIssue } from "./issues";
 
 export type ResourceFileKind = "environment" | "vault" | "memory-store";
 
-export interface ResourceFileResult {
-  ok: boolean;
-  errors: ValidationIssue[];
-  warnings: ValidationIssue[];
-}
+export interface ResourceFileResult extends ValidationResultShape {}
 
 const ajv = new Ajv({ strict: true, allErrors: true });
 const validators = {
@@ -47,30 +44,9 @@ export async function reportResourceFile(
   const ok = validate(parsed.data ?? {});
   if (!ok) {
     for (const err of validate.errors ?? []) {
-      const issue = toIssue(err, file);
-      if (opts.mode === "lenient" && err.keyword === "additionalProperties") {
-        warnings.push(issue);
-      } else {
-        errors.push(issue);
-      }
+      addSchemaIssue(err, opts.mode, { errors, warnings }, file);
     }
   }
 
   return { ok: errors.length === 0, errors, warnings };
-}
-
-function toIssue(err: ErrorObject, file: string): ValidationIssue {
-  const suffix = err.instancePath || "/";
-  if (err.keyword === "additionalProperties") {
-    return {
-      code: "unknown-key",
-      message: `Unknown key '${err.params.additionalProperty}' at ${suffix}`,
-      path: `${file}${suffix}`,
-    };
-  }
-  return {
-    code: `schema-${err.keyword}`,
-    message: err.message ?? "schema violation",
-    path: `${file}${suffix}`,
-  };
 }

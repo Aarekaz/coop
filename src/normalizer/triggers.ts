@@ -22,10 +22,7 @@ const SCALAR_SHORTHANDS: Record<string, (v: unknown) => Record<string, unknown>>
   on_pr_comment: (v) => ({ repo: v }),
 };
 
-export function normalizeTriggers(
-  triggersField: RawTriggersMap | undefined,
-  legacyTriggerField: RawTriggersMap | undefined,
-): TriggerNormResult {
+export function normalizeTriggers(triggersField: unknown, legacyTriggerField: unknown): TriggerNormResult {
   if (triggersField !== undefined && legacyTriggerField !== undefined) {
     throw new Error("both 'triggers:' and singular 'trigger:' present - use one");
   }

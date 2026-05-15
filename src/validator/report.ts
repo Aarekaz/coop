@@ -5,10 +5,11 @@ import { parseYaml } from "../parser/yaml";
 import { normalizeTriggers } from "../normalizer/triggers";
 import { normalizeLegacyAliases } from "../normalizer/legacy";
 import { normalizeResources } from "../normalizer/resources";
-import { validate, type ValidationIssue, type ValidationMode } from "./index";
+import { validate } from "./index";
 import { resolveReferences } from "./refs";
 import { collectDiagnostics } from "./diagnostics";
-import type { CanonicalAgent } from "../types/canonical";
+import type { HookValue, Hooks, Outcome } from "../types/canonical";
+import type { ValidationIssue, ValidationMode, ValidationResultShape } from "../types/validation";
 
 export interface ReportOptions {
   mode: ValidationMode;
@@ -16,11 +17,7 @@ export interface ReportOptions {
   homeDir?: string;
 }
 
-export interface ReportResult {
-  ok: boolean;
-  errors: ValidationIssue[];
-  warnings: ValidationIssue[];
-}
+export interface ReportResult extends ValidationResultShape {}
 
 export async function reportFile(file: string, opts: ReportOptions): Promise<ReportResult> {
   let text: string;
@@ -58,7 +55,7 @@ export async function reportText(text: string, file: string, opts: ReportOptions
   }
   if (errors.length) return { ok: false, errors, warnings };
 
-  const data = (parsed.data ?? {}) as Record<string, unknown>;
+  const data = asObjectRecord(parsed.data ?? {});
 
   let legacyOut;
   try {
@@ -70,10 +67,7 @@ export async function reportText(text: string, file: string, opts: ReportOptions
 
   let triggerOut;
   try {
-    triggerOut = normalizeTriggers(
-      legacyOut.data.triggers as Record<string, unknown> | undefined,
-      (legacyOut.data as { trigger?: Record<string, unknown> }).trigger,
-    );
+    triggerOut = normalizeTriggers(legacyOut.data.triggers, legacyOut.data.trigger);
   } catch (e) {
     return {
       ok: false,
@@ -85,7 +79,7 @@ export async function reportText(text: string, file: string, opts: ReportOptions
 
   let resourcesNormalized;
   try {
-    resourcesNormalized = normalizeResources(legacyOut.data.resources as unknown[] | undefined);
+    resourcesNormalized = normalizeResources(asOptionalArray(legacyOut.data.resources));
   } catch (e) {
     return {
       ok: false,
@@ -95,7 +89,7 @@ export async function reportText(text: string, file: string, opts: ReportOptions
   }
 
   const canonical: Record<string, unknown> = { ...legacyOut.data };
-  delete (canonical as { trigger?: unknown }).trigger;
+  delete canonical.trigger;
   if (triggerOut.triggers !== undefined) {
     canonical.triggers = triggerOut.triggers;
   } else {
@@ -121,11 +115,22 @@ export async function reportText(text: string, file: string, opts: ReportOptions
   warnings.push(...schemaResult.warnings);
 
   if (errors.length === 0) {
-    const agent = canonical as unknown as CanonicalAgent;
-    const diag = collectDiagnostics(agent);
+    const diag = collectDiagnostics({
+      hooks: asHooks(canonical.hooks),
+      outcome: asOutcome(canonical.outcome),
+    });
     warnings.push(...diag.warnings);
 
-    const refs = await resolveReferences(agent, { repoRoot: opts.repoRoot, homeDir: opts.homeDir });
+    const refs = await resolveReferences(
+      {
+        environment: asStringReference(canonical.environment),
+        vault: asStringReference(canonical.vault),
+        memory: asStringReference(canonical.memory),
+        skills: asStringArray(canonical.skills),
+      },
+      { repoRoot: opts.repoRoot, homeDir: opts.homeDir },
+    );
+    errors.push(...refs.errors);
     for (const m of refs.missing) {
       errors.push({
         code: "ref-not-found",
@@ -136,4 +141,64 @@ export async function reportText(text: string, file: string, opts: ReportOptions
   }
 
   return { ok: errors.length === 0, errors, warnings };
+}
+
+function asObjectRecord(value: unknown): Record<string, unknown> {
+  return isObjectRecord(value) ? value : {};
+}
+
+function asOptionalArray(value: unknown): unknown[] | undefined {
+  if (value === undefined) return undefined;
+  if (Array.isArray(value)) return value;
+  throw new Error("'resources:' must be an array");
+}
+
+function asOutcome(value: unknown): Outcome | undefined {
+  if (isObjectRecord(value) && typeof value.description === "string") {
+    return {
+      description: value.description,
+      max_iterations: typeof value.max_iterations === "number" ? value.max_iterations : undefined,
+    };
+  }
+  return undefined;
+}
+
+function asHooks(value: unknown): Hooks | undefined {
+  if (!isObjectRecord(value)) return undefined;
+
+  const hooks: Hooks = {};
+  for (const [event, hookValue] of Object.entries(value)) {
+    if (isHookValue(hookValue)) {
+      hooks[event] = hookValue;
+    }
+  }
+  return hooks;
+}
+
+function asStringReference(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+function asStringArray(value: unknown): string[] | undefined {
+  return Array.isArray(value) && value.every((item): item is string => typeof item === "string") ? value : undefined;
+}
+
+function isHookValue(value: unknown): value is HookValue {
+  if (typeof value === "string") return true;
+  if (!isObjectRecord(value)) return false;
+  if (value.replace === true && Array.isArray(value.handlers)) {
+    return value.handlers.every(isHookValue);
+  }
+  return (
+    typeof value.url === "string" &&
+    (value.headers === undefined || (isObjectRecord(value.headers) && Object.values(value.headers).every(isString)))
+  );
+}
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isString(value: unknown): value is string {
+  return typeof value === "string";
 }

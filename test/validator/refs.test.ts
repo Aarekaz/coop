@@ -44,6 +44,7 @@ describe("resolveReferences", () => {
       { environment: "nope-env", skills: ["nope-skill"] },
       { repoRoot: tmp, homeDir: "/nonexistent" },
     );
+    expect(result.errors).toEqual([]);
     expect(result.missing).toContainEqual({ field: "environment", name: "nope-env" });
     expect(result.missing).toContainEqual({ field: "skills", name: "nope-skill" });
   });
@@ -60,5 +61,14 @@ describe("resolveReferences", () => {
       { repoRoot: tmp, homeDir: "/nonexistent" },
     );
     expect(result.missing).toEqual([]);
+  });
+
+  it("reports reference read errors instead of treating them as missing", async () => {
+    await writeFile(path.join(tmp, ".coop"), "not a directory");
+
+    const result = await resolveReferences({ environment: "shared-node20" }, { repoRoot: tmp });
+
+    expect(result.missing).toEqual([]);
+    expect(result.errors).toContainEqual(expect.objectContaining({ code: "ref-read" }));
   });
 });

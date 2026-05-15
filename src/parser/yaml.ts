@@ -1,11 +1,11 @@
 import { parseDocument, LineCounter, isMap, isSeq, isScalar, type Node } from "yaml";
 
-export interface YamlPosition {
+interface YamlPosition {
   line: number;
   col: number;
 }
 
-export interface YamlError {
+interface YamlError {
   message: string;
   line: number;
   col: number;

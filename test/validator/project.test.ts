@@ -46,4 +46,33 @@ describe("reportProject", () => {
       await rm(dir, { recursive: true, force: true });
     }
   });
+
+  it("reports when .coop exists but is not a directory", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "coop-project-invalid-coop-"));
+    try {
+      await writeFile(path.join(dir, ".coop"), "not a directory");
+
+      const r = await reportProject(dir, { mode: "strict" });
+
+      expect(r.ok).toBe(false);
+      expect(r.errors.some((e) => e.code === "project-invalid-coop")).toBe(true);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("reports project read errors instead of hiding invalid resource directories", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "coop-project-invalid-dir-"));
+    try {
+      await mkdir(path.join(dir, ".coop"), { recursive: true });
+      await writeFile(path.join(dir, ".coop", "agents"), "not a directory");
+
+      const r = await reportProject(dir, { mode: "strict" });
+
+      expect(r.ok).toBe(false);
+      expect(r.errors.some((e) => e.code === "project-read" && e.path.endsWith(".coop/agents"))).toBe(true);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
 });

@@ -31,10 +31,11 @@ export function normalizeLegacyAliases(input: Record<string, unknown>): LegacyNo
 
   if ("connections" in out && typeof out.connections === "object" && out.connections !== null) {
     const conn = out.connections as Record<string, unknown>;
-    const values = Object.values(conn).filter((v): v is string => typeof v === "string");
-    const distinct = [...new Set(values)];
+    const values = Object.values(conn);
+    const stringValues = values.filter((v): v is string => typeof v === "string");
+    const distinct = [...new Set(stringValues)];
 
-    if (distinct.length === 1) {
+    if (values.length > 0 && values.length === stringValues.length && distinct.length === 1) {
       if (out.vault === undefined) {
         out.vault = distinct[0];
       }
@@ -47,7 +48,10 @@ export function normalizeLegacyAliases(input: Record<string, unknown>): LegacyNo
     } else {
       warnings.push({
         code: "connections-manual-migration",
-        message: `'connections:' has multiple distinct vaults (${distinct.join(", ")}); set 'vault:' to the agent-wide default and move per-server overrides to coop.json mcp_servers, then remove 'connections:'`,
+        message:
+          distinct.length > 1
+            ? `'connections:' has multiple distinct vaults (${distinct.join(", ")}); set 'vault:' to the agent-wide default and move per-server overrides to coop.json mcp_servers, then remove 'connections:'`
+            : "'connections:' requires manual migration; set 'vault:' to the agent-wide default and move per-server overrides to coop.json mcp_servers, then remove 'connections:'",
       });
     }
   }

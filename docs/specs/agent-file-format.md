@@ -11,7 +11,7 @@
 
 **Goal.** Define the source-of-truth schema for `.coop/agents/<name>.md`, the per-agent definition file in a Coop project. The schema MUST be enforceable by a closed-schema validator (`coop validate`) and MUST translate losslessly to/from Anthropic's `POST /v1/agents` request body for fields that have a direct counterpart there.
 
-**Positioning anchor.** Coop is the open-source, self-hostable, vendor-neutral 1:1 of Anthropic Managed Agents (beta header `managed-agents-2026-04-01`) plus operational primitives Anthropic does not ship: triggers, hooks, reactions, standing orders, programs, OpenClaw migration.
+**Positioning anchor.** Coop is an open-source, self-hostable, vendor-neutral agent format aligned with Anthropic Managed Agents (beta header `managed-agents-2026-04-01`) and extended with triggers, hooks, reactions, standing orders, programs, and OpenClaw migration.
 
 **Non-goals for Slice 1.**
 
@@ -137,7 +137,7 @@ and post a scored digest to #sales.
 | `title` | optional | free-form string, ≤256 chars; defaults to `name` if omitted | `name` |
 | `description` | optional | string, ≤2048 chars | `description` |
 | `tags` | optional | map<string, string>, ≤16 pairs | `metadata` |
-| `triggers` | optional | trigger object (§5) | n/a — Coop wedge |
+| `triggers` | optional | trigger object (§5) | n/a — Coop extension |
 | `model` | **REQUIRED** | string or `{id, speed}` | `model` |
 | `session` | optional | `isolated \| persistent`; default `isolated` | implicit |
 | `timeout` | optional | duration string; default `10m` | implicit |
@@ -150,10 +150,10 @@ and post a scored digest to #sales.
 | `memory` | optional | reference or inline (§7) | `memory_store` at session creation |
 | `resources` | optional | array of resource objects (§8) | session `resources[]` |
 | `permissions` | optional | permission object (§9) | per-tool `permission_policy` |
-| `playbook` | optional | path to `.coop/programs/<slug>.md` (§10) | n/a — Coop wedge |
+| `playbook` | optional | path to `.coop/programs/<slug>.md` (§10) | n/a — Coop extension |
 | `outcome` | optional | outcome object (§11, PREVIEW) | `define_outcome` event |
-| `hooks` | optional | hook map (§12) | n/a — Coop wedge |
-| `notify` | optional | notify object (§13) | n/a — Coop wedge |
+| `hooks` | optional | hook map (§12) | n/a — Coop extension |
+| `notify` | optional | notify object (§13) | n/a — Coop extension |
 
 The schema is **closed**. Unknown top-level keys MUST cause validator rejection in strict mode and SHOULD emit warnings in lenient mode.
 
@@ -330,7 +330,7 @@ outcome:
   max_iterations: 3
 ```
 
-**Outcome is a preview feature in Slice 1.** Validators MUST emit a `preview-feature` warning when an outcome block is present, in **both** lenient and strict modes. Preview features do NOT cause strict-mode rejection (§15) — the whole purpose of marking something preview is to let teams adopt it under known volatility. The shape is intentionally minimal — no rubric criteria, no grader configuration — pending Anthropic's stabilization of the `define_outcome` event and grader API. Future revisions will add `rubric:` matching Anthropic's `{type: text|file, criteria: [...]}` shape.
+**Outcome is a preview feature in Slice 1.** Validators MUST emit a `preview-feature` warning when an outcome block is present, in **both** lenient and strict modes. Preview features do NOT cause strict-mode rejection (§15). The shape is intentionally minimal — no rubric criteria, no grader configuration — while Anthropic's `define_outcome` event and grader API stabilize. A future revision will add `rubric:` matching Anthropic's `{type: text|file, criteria: [...]}` shape.
 
 Constraints: `max_iterations` MUST be in `[1, 20]`.
 
@@ -381,7 +381,7 @@ Hooks MAY do any of:
 - **Inject context** — return `{ additionalContext: "..." }`. Honored only on pre-model-turn events (`on_run_start`, `on_message_in`, `on_tool_call`, `on_compact`). Returns from post-run events are ignored; strict-mode validators emit a warning.
 - **Block** — return `{ decision: deny, reason: "..." }`. Honored only on `on_tool_call` in Slice 1 (§12.2).
 
-Hooks MUST NOT mutate inputs to the next action. Mutation is deferred indefinitely.
+Hooks MUST NOT mutate inputs to the next action. Mutation is outside Slice 1 scope.
 
 ### 12.6 Merge semantics (fleet × agent)
 
@@ -517,22 +517,22 @@ The following were considered and explicitly NOT included in Slice 1:
 
 ---
 
-## 19. Judgment Calls Flagged for Review
+## 19. Open Design Questions
 
-Items below were decided without explicit confirmation; revisit if any feel wrong:
+These decisions remain review points before publishing the spec:
 
-1. **`session: isolated | persistent`** — `ambient` was dropped; `persistent` is the new term for "conversational state survives across runs." Alternatives: `continuous`, `stateful`. Settle on one before publish.
-2. **`name` as ID, `title:` as display name** — resolved in §4 by adding `title:` as an optional human display label, with `name` as the kebab-case logical ID that MUST match filename. Confirm this split feels right; if you'd rather collapse them again (treat `name` as both), say the word.
-3. **`workspace:` field dropped** — the documented `workspace: private | shared:<n> | none` is replaced by the combination of `environment:` + `resources:` + `memory:`. This is the biggest break from the published docs.
-4. **`workspace.*` and `memory.*` glob tools dropped** — implicit since the environment provides filesystem and memory mounts.
-5. **`thinking:` field dropped** — Anthropic does not expose per-agent thinking; it's a per-request hint. If you want it as a Coop convenience knob, easy to add to §4.2.
-6. **`exposedModels` fully dropped, not reserved** — §18 mentions it as explicitly excluded. If you want it reserved for v2 instead of dropped, move the bullet.
-7. **`tags` capped at 16 pairs** — mirrors Anthropic's metadata limit. Lower or higher caps are fine; flag if you have an opinion.
+1. **`session: isolated | persistent`** — `ambient` was removed; `persistent` means conversational state survives across runs. Alternatives include `continuous` and `stateful`.
+2. **`name` as ID, `title:` as display name** — §4 uses `name` as the kebab-case logical ID that MUST match filename, and `title` as the optional display label.
+3. **`workspace:` field removed** — the earlier `workspace: private | shared:<n> | none` model is replaced by `environment:`, `resources:`, and `memory:`.
+4. **`workspace.*` and `memory.*` glob tools removed** — filesystem and memory access are represented through environment and memory mounts.
+5. **`thinking:` field removed** — Anthropic exposes this as a per-request hint rather than a per-agent field.
+6. **`exposedModels` excluded** — §18 lists it as explicitly not included in Slice 1.
+7. **`tags` capped at 16 pairs** — this mirrors Anthropic's metadata limit.
 
 ---
 
 ## Appendix A — Companion Diagrams
 
 - **Slice 1 scope**: <https://merm.sh/d/16SNbmF4en>
-- **Anthropic Managed Agents mirror + Coop wedge**: <https://merm.sh/d/vCabNxvb2H>
-- **Directory layout (option B, corrected)**: <https://merm.sh/d/yW5ijzDs7j>
+- **Anthropic Managed Agents mirror + Coop extensions**: <https://merm.sh/d/vCabNxvb2H>
+- **Directory layout**: <https://merm.sh/d/yW5ijzDs7j>

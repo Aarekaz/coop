@@ -22,8 +22,8 @@ It ships:
 - Schemas for `.coop/environments`, `.coop/vaults`, and `.coop/memory-stores`
 - A minimal CLI for `coop validate`, `coop init`, and `coop new agent`
 
-It does not yet execute agents. The runtime, trigger workers, scheduler,
-hosted dashboard, and sandbox integration are later slices.
+It does not yet execute agents. Runtime execution, trigger workers, scheduler,
+hosted dashboard, and sandbox integration are planned for later slices.
 
 ## Example
 
@@ -112,8 +112,8 @@ result.
 ## Out of scope
 
 Agent runtime, web dashboard, `.coop/hooks/<name>/HOOK.md`, multi-agent
-coordinator, full Outcome rubric, and Anthropic import/export mapping. See the
-roadmap for the deferred list.
+coordinator, full Outcome rubric, and Anthropic import/export mapping. See
+[ROADMAP.md](ROADMAP.md) for planned slices.
 
 ## Roadmap
 

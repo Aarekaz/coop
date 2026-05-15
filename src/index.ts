@@ -4,3 +4,7 @@ export { reportResourceFile } from "./validator/resource-files";
 export { validate } from "./validator";
 export { initProject, newAgent } from "./cli/scaffold";
 export type { CanonicalAgent } from "./types/canonical";
+export type { ValidationIssue, ValidationMode, ValidationResult } from "./validator";
+export type { ReportOptions, ReportResult } from "./validator/report";
+export type { ProjectReportResult } from "./validator/project";
+export type { ResourceFileKind, ResourceFileResult } from "./validator/resource-files";

@@ -1,8 +1,9 @@
 import { stat } from "node:fs/promises";
 import path from "node:path";
 import type { CanonicalAgent } from "../types/canonical";
+import type { ValidationIssue } from "../types/validation";
 
-export interface RefMissing {
+interface RefMissing {
   field: "environment" | "vault" | "memory" | "skills";
   name: string;
 }
@@ -14,14 +15,18 @@ export interface RefResolveOptions {
 
 export interface RefResolveResult {
   missing: RefMissing[];
+  errors: ValidationIssue[];
 }
 
 async function exists(p: string): Promise<boolean> {
   try {
     await stat(p);
     return true;
-  } catch {
-    return false;
+  } catch (e) {
+    if (isNodeError(e) && e.code === "ENOENT") {
+      return false;
+    }
+    throw new Error(`Could not check reference path ${p}: ${errorMessage(e)}`);
   }
 }
 
@@ -51,21 +56,34 @@ export async function resolveReferences(
   opts: RefResolveOptions,
 ): Promise<RefResolveResult> {
   const missing: RefMissing[] = [];
+  const errors: ValidationIssue[] = [];
 
-  if (typeof agent.environment === "string" && !(await checkSimple("environments", agent.environment, opts))) {
-    missing.push({ field: "environment", name: agent.environment });
-  }
-  if (typeof agent.vault === "string" && !(await checkSimple("vaults", agent.vault, opts))) {
-    missing.push({ field: "vault", name: agent.vault });
-  }
-  if (typeof agent.memory === "string" && !(await checkSimple("memory-stores", agent.memory, opts))) {
-    missing.push({ field: "memory", name: agent.memory });
-  }
-  for (const skill of agent.skills ?? []) {
-    if (!(await checkSkill(skill, opts))) {
-      missing.push({ field: "skills", name: skill });
+  try {
+    if (typeof agent.environment === "string" && !(await checkSimple("environments", agent.environment, opts))) {
+      missing.push({ field: "environment", name: agent.environment });
     }
+    if (typeof agent.vault === "string" && !(await checkSimple("vaults", agent.vault, opts))) {
+      missing.push({ field: "vault", name: agent.vault });
+    }
+    if (typeof agent.memory === "string" && !(await checkSimple("memory-stores", agent.memory, opts))) {
+      missing.push({ field: "memory", name: agent.memory });
+    }
+    for (const skill of agent.skills ?? []) {
+      if (!(await checkSkill(skill, opts))) {
+        missing.push({ field: "skills", name: skill });
+      }
+    }
+  } catch (e) {
+    errors.push({ code: "ref-read", message: errorMessage(e), path: "/" });
   }
 
-  return { missing };
+  return { missing, errors };
+}
+
+function isNodeError(error: unknown): error is NodeJS.ErrnoException {
+  return error instanceof Error && "code" in error;
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

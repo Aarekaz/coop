@@ -1,11 +1,11 @@
 import type { CanonicalAgent } from "../types/canonical";
-import type { ValidationIssue } from "./index";
+import type { ValidationIssue } from "../types/validation";
 
 export interface DiagnosticsResult {
   warnings: ValidationIssue[];
 }
 
-export function collectDiagnostics(agent: CanonicalAgent): DiagnosticsResult {
+export function collectDiagnostics(agent: Partial<CanonicalAgent>): DiagnosticsResult {
   const warnings: ValidationIssue[] = [];
 
   if (agent.outcome !== undefined) {
